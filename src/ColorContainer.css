@@ -1,0 +1,8 @@
+.block-container {
+  display: flex;
+  width: 700px;
+}
+.block {
+  width: 50px;
+  height: 50px;
+}
