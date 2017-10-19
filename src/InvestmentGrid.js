@@ -7,6 +7,8 @@ import scrollbarSize from 'dom-helpers/util/scrollbarSize'
 import classnames from 'classnames'
 import cloneDeep from 'lodash/cloneDeep'
 
+import { getColors, convertMoney } from './utils'
+
 import './InvestmentGrid.css'
 
 const PLATFORM_ABBE = {
@@ -23,13 +25,13 @@ class InvestmentGrid extends React.Component {
     super(props)
 
     const {max, min} = this.getMaxMin(this.props.investmentData)
-
+    const colors = getColors(this.props.levels, this.props.hexColor)
     this.state = {
       sortBy: '',
       ascending: false,
       max: max,
       min: min,
-      colorSchema: ['#dddddd', '#dcf1f4', '#badbe0', '#a4cfd5', '#81bec6', '#60adb8', '#4ba3af', '#308e9d', '#007286', '#003842'],
+      colorScheme: colors,
       investmentData: cloneDeep(this.props.investmentData)
     }
 
@@ -239,7 +241,7 @@ class InvestmentGrid extends React.Component {
 
   renderHeaderCell({columnIndex, key, rowIndex, style}) {
     const platform = this.props.platforms[columnIndex]
-    const { sortBy, ascending } = this.state
+    const { sortBy, ascending, colorScheme } = this.state
     const sortable_up = <span className="icon-sort-asc"><FaCaretUp /></span>
     const sortable_down = <span className="icon-sort-dec"><FaCaretDown /></span>
 
@@ -248,9 +250,13 @@ class InvestmentGrid extends React.Component {
       'sort-asc': ifChosen && ascending,
       'sort-dec': ifChosen && !ascending
     })
+    const newStyle = {
+      ...style,
+      color: colorScheme[colorScheme.length - 1]
+    }
 
     return (
-      <div className={classes} key={key} style={style} onClick={()=>this.changeSortBy(platform)}>
+      <div className={classes} key={key} style={newStyle} onClick={()=>this.changeSortBy(platform)}>
         <div
           className='icon-sort-container'
           >
@@ -267,31 +273,38 @@ class InvestmentGrid extends React.Component {
     const {
       min,
       max,
-      colorSchema
+      colorScheme
     } = this.state
+
+    const { levels } = this.props
 
     // Investment for one brand
     const investment = this.state.investmentData[rowIndex]['Investment']
 
     const amount = investment[this.props.platforms[columnIndex]]
 
-    const c = colorSchema[Math.floor((amount-min)/((max-min)/10))]
+    const colorLevel = Math.floor((amount-min)/((max-min)/levels))
+    const textColor = colorLevel <= colorScheme.length/2 ? colorScheme[colorScheme.length-1] : colorScheme[0]
+    const backgroundColor = colorScheme[colorLevel]
+
     const classes = classnames('body-cell')
     const newStyle = {
       ...style,
-      backgroundColor: c,
+      color: textColor,
+      backgroundColor: backgroundColor,
     }
     const hiddenDivStyle = {
       width: style.width,
       height: style.height,
-      backgroundColor: c
+      color: textColor,
+      backgroundColor: backgroundColor
     }
 
     return (
       <div
         className={classes}
         key={key} style={newStyle}>
-        {this.convertMoney(amount)}
+        {convertMoney(amount)}
         <div
           className="exact-amount"
           style={hiddenDivStyle}
@@ -301,35 +314,10 @@ class InvestmentGrid extends React.Component {
       </div>)
   }
 
-  convertMoney(amount) {
-    let money = ''
-    let abbr = ''
-    if(typeof amount !== 'number' || amount <= 0) {
-      return 'NO DATA'
-    }
-    if(amount<1000) {
-      money = (''+amount)
-      abbr = ''
-    } else if(amount < 1000000) {
-      money = (''+amount)
-      money = money.substring(0,money.length-3)
-      abbr = 'K'
-    } else if(amount < 1000000000) {
-      money = (''+amount)
-      money = money.substring(0,money.length-6)
-      abbr = 'M'
-    } else {
-      money = (''+amount)
-      money = money.substring(0,money.length-9)
-      abbr = 'B'
-    }
-    return money + abbr
-  }
-
   renderLeftHeaderCell({columnIndex, key, style}) {
     const BRAND = 'Brand'
 
-    const { sortBy, ascending } = this.state
+    const { sortBy, ascending, colorScheme } = this.state
     const sortable_up = <span className="icon-sort-asc"><FaCaretUp /></span>
     const sortable_down = <span className="icon-sort-dec"><FaCaretDown /></span>
 
@@ -339,11 +327,16 @@ class InvestmentGrid extends React.Component {
       'sort-dec': ifChosen && !ascending
     })
 
+    const newStyle = {
+      ...style,
+      color: colorScheme[colorScheme.length - 1]
+    }
+
     return (
       <div
         className={classes}
         key={key}
-        style={style}
+        style={newStyle}
         onClick={()=>this.changeSortBy('Brand')}
         >
           <div
@@ -359,10 +352,16 @@ class InvestmentGrid extends React.Component {
 
   renderLeftSideCell({columnIndex, key, rowIndex, style}) {
     let classes = classnames('row-header-grid-cell')
+    const { colorScheme } = this.state
+    const newStyle = {
+      ...style,
+      color: colorScheme[colorScheme.length - 1]
+    }
     return (
       <div
         className={classes}
-        key={key} style={style}>
+        key={key}
+        style={newStyle}>
         {this.state.investmentData[rowIndex]['Brand']}
       </div>
     )
@@ -376,6 +375,9 @@ InvestmentGrid.propTypes = {
   overscanColumnCount: PropTypes.number,
   overscanRowCount: PropTypes.number,
   rowHeight: PropTypes.number,
+  levels: PropTypes.number,
+  hexColor: PropTypes.string,
+  // required
   investmentData: PropTypes.arrayOf(
     PropTypes.shape({
       Brand: PropTypes.string.isRequired,
@@ -390,7 +392,9 @@ InvestmentGrid.defaultProps = {
   height: 300,
   overscanColumnCount: 0,
   overscanRowCount: 5,
-  rowHeight: 40
+  rowHeight: 40,
+  levels: 15,
+  hexColor: '006F80'
 }
 
 export default InvestmentGrid
