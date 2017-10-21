@@ -24,15 +24,16 @@ class InvestmentGrid extends React.Component {
   constructor(props) {
     super(props)
 
-    const {max, min} = this.getMaxMin(this.props.investmentData)
+    const {investmentData, levels} = this.props
+    // const {max, min} = this.getMaxMin(investmentData)
+    const percentilesForColorScheme = this.getPercentilesForColorScheme(investmentData, levels)
     const colors = getColors(this.props.levels, this.props.hexColor)
     this.state = {
       sortBy: '',
       ascending: false,
-      max: max,
-      min: min,
       colorScheme: colors,
-      investmentData: cloneDeep(this.props.investmentData)
+      investmentData: cloneDeep(this.props.investmentData),
+      percentilesForColorScheme
     }
 
     this.displayName = 'InvestmentGrid'
@@ -238,6 +239,36 @@ class InvestmentGrid extends React.Component {
     }
   }
 
+  // Get percentiles according to `levels`
+  getPercentilesForColorScheme(fixtureData, levels) {
+    const { platforms } = this.props
+    const dataArray = []
+    const percentiles = []
+
+    // get a sorted data array
+    fixtureData.forEach(d => {
+      const Investment = d['Investment']
+      platforms.forEach(p => {
+        if ((typeof Investment[p] === 'number') && (Investment[p] !== 0)) {
+          dataArray.push(Investment[p])
+        }
+      })
+    })
+    dataArray.sort((a,b) => (a-b))
+
+    // start calculate percentiles
+    const totalNumber = dataArray.length
+    levels = levels > totalNumber ? totalNumber : levels
+    const step = Math.floor(totalNumber / levels)
+    for(let i = 0; i < levels -1; i++) {
+      percentiles.push(dataArray[(i+1) * step])
+    }
+    percentiles.push(dataArray[totalNumber-1])
+
+    return percentiles
+
+  }
+
 
   renderHeaderCell({columnIndex, key, rowIndex, style}) {
     const platform = this.props.platforms[columnIndex]
@@ -269,23 +300,30 @@ class InvestmentGrid extends React.Component {
     )
   }
 
+
+
   renderBodyCell({ columnIndex, key, rowIndex, style }) {
     const {
-      min,
-      max,
-      colorScheme
+      colorScheme,
+      percentilesForColorScheme,
     } = this.state
 
-    const { levels } = this.props
+    const { nodataColor } = this.props
 
     // Investment for one brand
     const investment = this.state.investmentData[rowIndex]['Investment']
 
     const amount = investment[this.props.platforms[columnIndex]]
+    let backgroundColor, colorLevel, textColor
 
-    const colorLevel = Math.floor((amount-min)/((max-min)/levels))
-    const textColor = colorLevel <= colorScheme.length/2 ? colorScheme[colorScheme.length-1] : colorScheme[0]
-    const backgroundColor = colorScheme[colorLevel]
+    if(!amount) {
+      backgroundColor = nodataColor
+      textColor = colorScheme[colorScheme.length-1]
+    } else {
+      colorLevel = percentilesForColorScheme.findIndex(p => amount <= p)
+      textColor = colorLevel < colorScheme.length/2 ? colorScheme[colorScheme.length-1] : colorScheme[0]
+      backgroundColor = colorScheme[colorLevel]
+    }
 
     const classes = classnames('body-cell')
     const newStyle = {
@@ -353,16 +391,35 @@ class InvestmentGrid extends React.Component {
   renderLeftSideCell({columnIndex, key, rowIndex, style}) {
     let classes = classnames('row-header-grid-cell')
     const { colorScheme } = this.state
+    const brandName = this.state.investmentData[rowIndex]['Brand'];
     const newStyle = {
       ...style,
       color: colorScheme[colorScheme.length - 1]
     }
+
+    const testContent = (
+      <div className="box" style={newStyle}>
+        <div>
+          <svg viewBox="0 0 500 100" className="chart">
+          <polyline
+             fill="none"
+             stroke="#0074d9"
+             strokeWidth="4"
+             points=" 00,100 20,60 40,80 60,20 80,80 100,80 120,60 140,50 160,90 180,80 200, 40 220, 10 240, 70 260, 90 280, 90 300, 40 320, 10 340, 60 360, 30 380, 40 400, 60 420, 70 500, 80 "
+           />
+
+          </svg>
+          </div>
+          <div className="content">{brandName}</div>
+      </div>)
+
     return (
       <div
         className={classes}
         key={key}
         style={newStyle}>
-        {this.state.investmentData[rowIndex]['Brand']}
+        {/* {brandName === 'Symphony' ? testContent : brandName} */}
+        {brandName}
       </div>
     )
   }
@@ -377,6 +434,7 @@ InvestmentGrid.propTypes = {
   rowHeight: PropTypes.number,
   levels: PropTypes.number,
   hexColor: PropTypes.string,
+  nodataColor: PropTypes.string,
   // required
   investmentData: PropTypes.arrayOf(
     PropTypes.shape({
@@ -394,7 +452,8 @@ InvestmentGrid.defaultProps = {
   overscanRowCount: 5,
   rowHeight: 40,
   levels: 15,
-  hexColor: '006F80'
+  hexColor: '006F80',
+  nodataColor: '#dddddd'
 }
 
 export default InvestmentGrid

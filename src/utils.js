@@ -2,11 +2,11 @@ import convert from 'color-convert'
 
 export function getSV(levels) {
   const results = []
-  const step = Math.floor(100 / (levels+1))
+  const step = 100 / (levels+1)
 
   for(let i = 1; i <= levels; i++) {
-    const saturation = i * step
-    const value = -0.8 * saturation + 100
+    const saturation = Math.floor(i * step)
+    const value = Math.floor(-0.8 * saturation + 100)
     results.push([saturation, value])
   }
   return results

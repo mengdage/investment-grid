@@ -21,8 +21,10 @@ class App extends Component {
         <InvestmentGrid
           platforms={platforms}
           investmentData={fixtureDataShort}
+          levels={50} hexColor="00ff00"
+
         />
-        <ColorContainer levels={20} hexColor="006F80"/>
+        <ColorContainer levels={50} hexColor="00ff00"/>
       </div>
     );
   }
